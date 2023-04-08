@@ -41,6 +41,14 @@ export class DraftComponent extends BaseComponent implements OnInit {
     super();
   }
 
+  public updateTeamNeedWeight(event) {
+    this.mockDraftService.teamNeedWeight = event.value
+  }
+
+  public updateRandomnessWeight(event) {
+    this.mockDraftService.randomnessWeight = event.value
+  }
+
   ngOnInit(): void {
     if (this.leagueService.selectedLeague && this.playerService.playerValues.length !== 0) {
       this.initServices();

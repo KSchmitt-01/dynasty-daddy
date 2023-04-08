@@ -19,12 +19,12 @@ import { FleaflickerService } from 'src/app/services/api/fleaflicker/fleaflicker
   styleUrls: ['./home.component.css']
 })
 export class HomeComponent extends BaseComponent implements OnInit, AfterViewInit {
-
+  //don't forget to remove hardcode
   /** sleeper username input */
-  usernameInput: string = '';
+  usernameInput: string = 'kschmitt1';
 
   /** sleeper league id input */
-  sleeperLeagueIdInput: string = '';
+  sleeperLeagueIdInput: string = '916269956172546048';
 
   /** mfl league id input */
   mflLeagueIdInput: string = '';

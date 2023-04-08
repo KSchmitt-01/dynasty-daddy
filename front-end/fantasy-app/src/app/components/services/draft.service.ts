@@ -16,6 +16,12 @@ export class DraftService {
   /** team picks */
   teamPicks: TeamMockDraftPick[] = [];
 
+  /** team need weight */
+  teamNeedWeight: number = 30;
+
+  /** randomness weight */
+  randomnessWeight: number = 20;
+
   /** available players */
   selectablePlayers: FantasyPlayer[] = [];
 
@@ -168,12 +174,14 @@ export class DraftService {
         break;
       case 'team':
         this.mockDraftSelectedPlayers = [];
+        //set team needs
         const teamNeedsMap = {}
         this.powerRankingsService.powerRankings.forEach(team => {
           teamNeedsMap[team.team.roster.rosterId] =
             this.powerRankingsService.getTeamNeedsFromRosterId(team.team.roster.rosterId)
         });
         this.teamPicks.forEach((pick, ind) => {
+          //set player value map
           const playerValueMap = {}
           const playerOptions = this.selectablePlayers.slice()
             .filter(p => !this.mockDraftSelectedPlayers.includes(p))
@@ -181,12 +189,14 @@ export class DraftService {
           playerOptions.forEach(p => {
             const playerNeed = teamNeedsMap[pick.rosterId].findIndex(teamNeed => teamNeed === p.position)
             if (playerNeed >= 0) {
-              const needsBoost = (teamNeedsMap[pick.rosterId].length - playerNeed) * .1 + 1
+              const needsBoost = (teamNeedsMap[pick.rosterId].length - playerNeed) * (this.teamNeedWeight * .01 / 2) + 1
               playerValueMap[p.name_id] = (this.leagueService.selectedLeague.isSuperflex ? p.sf_trade_value : p.trade_value) * needsBoost
             }
           })
+          //sort value low to high
           playerOptions.sort((a, b) => playerValueMap[b.name_id] - playerValueMap[a.name_id])
-          this.mockDraftSelectedPlayers.push(playerOptions[0]);
+          const weightedPickSelections = this.generatePercentageArray();
+          this.mockDraftSelectedPlayers.push(this.weighted_random_selection(playerOptions, weightedPickSelections));
         });
         break;
       default:
@@ -194,6 +204,53 @@ export class DraftService {
         break;
     }
   }
+
+  /**
+   * create an array of selection weights
+   * @private
+   * returns list of weights
+   */
+  private generatePercentageArray() {
+    const arr = [];
+    let remaining = 1;
+    
+    for (let i = 0; i < 5; i++) {
+      const max = remaining / (6 - i);
+      const random = Math.random();
+      const exponent = Math.pow(random, 3 + 100/this.randomnessWeight); // control degree of skew
+      const value = max * exponent;
+      arr.push(value);
+      remaining -= value;
+    }
+    
+    arr.push(remaining);
+    arr.sort((a, b) => b - a);
+    return arr;
+  }
+
+  /**
+   * Select a random player given a percentage they should be selected
+   * @param players avaliable players
+   * @param weights array of selection weightss
+   * @private
+   * returns FantasyPlayer
+   */
+  private weighted_random_selection(players, weights) {
+    var i;
+
+    for (i = 1; i < weights.length; i++){
+      weights[i] += weights[i - 1];
+    }
+    
+    var random = Math.random() * weights[weights.length - 1];
+    
+    for (i = 0; i < weights.length; i++){
+      if (weights[i] > random)
+          break;
+    }
+    
+    return players[i];
+}
 
   /**
    * create pick string display

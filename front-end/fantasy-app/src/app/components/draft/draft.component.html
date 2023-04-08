@@ -36,7 +36,14 @@
           <mat-button-toggle value="team">Team Need</mat-button-toggle>
           <mat-button-toggle value="custom">Custom</mat-button-toggle>
         </mat-button-toggle-group>
-        <span class="container_spacer"></span>
+        <span *ngIf="mockDraftService.mockDraftConfig === 'team'">
+          Draft for needs:
+          <mat-slider min="10" max="100" step="10" (change)="this.updateTeamNeedWeight($event)" [value]="this.mockDraftService.teamNeedWeight"></mat-slider>
+          Randomness:
+          <mat-slider min="0" max="100" step="10" (change)="this.updateRandomnessWeight($event)" [value]="this.mockDraftService.randomnessWeight"></mat-slider>
+          <button mat-raised-button color="accent" (click)="resetMockDraft()"> Re-draft</button>
+        </span>
+        <span *ngIf="mockDraftService.mockDraftConfig !== 'team'" class="container_spacer"></span>
         <span class="button-right">
           <button mat-raised-button color="accent" (click)="resetMockDraft()">Reset</button>
           <button mat-icon-button (click)="showAdvancedSettings = !showAdvancedSettings">
