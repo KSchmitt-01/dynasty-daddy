@@ -29,19 +29,19 @@
 <div *ngIf="leagueService.isLeagueLoaded()">
   <div *ngIf="mockDraftService.selectedDraft == 'upcoming'" class="margin-top-25" [ngClass]="{'mock-draft-mobile': configService.isMobile}">
     <div class="mock-draft-table-container">
-      <div>
+      <div style="display: flex; justify-content: space-between;">
         <mat-button-toggle-group [(ngModel)]="mockDraftService.mockDraftConfig" class="button-left"
                                 style="overflow: auto">
           <mat-button-toggle value="player">Best Value</mat-button-toggle>
           <mat-button-toggle value="team">Team Need</mat-button-toggle>
           <mat-button-toggle value="custom">Custom</mat-button-toggle>
         </mat-button-toggle-group>
-        <span *ngIf="mockDraftService.mockDraftConfig === 'team'">
+        <span *ngIf="mockDraftService.mockDraftConfig === 'team'" style="padding-left: 10px">
           Draft for needs:
           <mat-slider min="10" max="100" step="10" (change)="this.updateTeamNeedWeight($event)" [value]="this.mockDraftService.teamNeedWeight"></mat-slider>
           Randomness:
           <mat-slider min="0" max="100" step="10" (change)="this.updateRandomnessWeight($event)" [value]="this.mockDraftService.randomnessWeight"></mat-slider>
-          <button mat-raised-button color="accent" (click)="resetMockDraft()"> Re-draft</button>
+          <button mat-raised-button color="accent" style="padding-left: 10px" (click)="resetMockDraft()"> Re-draft</button>
         </span>
         <span *ngIf="mockDraftService.mockDraftConfig !== 'team'" class="container_spacer"></span>
         <span class="button-right">
