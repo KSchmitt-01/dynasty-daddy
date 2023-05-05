@@ -12,6 +12,7 @@ import { MflService } from '../../services/api/mfl/mfl.service';
 import { MflApiService } from '../../services/api/mfl/mfl-api.service';
 import { LeaguePlatform } from '../../model/league/FantasyPlatformDTO';
 import { FleaflickerService } from 'src/app/services/api/fleaflicker/fleaflicker.service';
+import { ESPNService } from 'src/app/services/api/espn/espn.service';
 
 @Component({
   selector: 'app-home',
@@ -59,13 +60,19 @@ export class HomeComponent extends BaseComponent implements OnInit, AfterViewIni
   /** mfl login method */
   mflLoginMethod: string = 'mfl_username';
 
+  /** ESPN login method */
+  espnLoginMethod: string = 'espn_league_id';
+
+  /** ESPN league id string */
+  espnLeagueId: string = '';
+
   constructor(private sleeperApiService: SleeperApiService,
     public leagueService: LeagueService,
     private playersService: PlayerService,
     public configService: ConfigService,
     private route: ActivatedRoute,
     private mflService: MflService,
-    private mflApiService: MflApiService,
+    private espnService: ESPNService,
     private dialog: MatDialog,
     private fleaflickerService: FleaflickerService,
     public leagueSwitchService: LeagueSwitchService) {
@@ -106,6 +113,10 @@ export class HomeComponent extends BaseComponent implements OnInit, AfterViewIni
       switch (this.leagueService.selectedLeague.leaguePlatform) {
         case LeaguePlatform.MFL:
           this.mflLeagueIdInput = this.leagueService.selectedLeague.leagueId;
+          this.mflUsernameInput = this.leagueService.leagueUser?.userData?.username || '';
+          break;
+        case LeaguePlatform.ESPN:
+          this.espnLeagueId = this.leagueService.selectedLeague.leagueId;
           break;
         case LeaguePlatform.FLEAFLICKER:
           this.fleaflickerLeagueIdInput = this.leagueService.selectedLeague.leagueId;
@@ -135,13 +146,23 @@ export class HomeComponent extends BaseComponent implements OnInit, AfterViewIni
   }
 
   /**
- * loads fleaflicker data for user
- */
+   * loads fleaflicker data for user
+   */
   fetchFleaflickerInfo(): void {
     this.fleaflickerLeagueIdInput = '';
     this.leagueService.loadNewUser$(this.fleaflickerEmail, this.selectedYear, LeaguePlatform.FLEAFLICKER);
     this.leagueService.selectedYear = this.selectedYear;
     this.leagueService.resetLeague();
+  }
+
+
+  /**
+   * loads fleaflicker data for user
+   */
+  loginWithESPNLeagueId(year?: string, leagueId?: string): void {
+    this.espnService.loadLeagueFromId$(year || this.selectedYear, leagueId || this.espnLeagueId).subscribe(leagueData => {
+      this.leagueSwitchService.loadLeague(leagueData);
+    });
   }
 
   /**
@@ -181,8 +202,6 @@ export class HomeComponent extends BaseComponent implements OnInit, AfterViewIni
    * @param demoId string of demo league id
    */
   loginWithSleeperLeagueId(demoId?: string): void {
-    this.usernameInput = '';
-    this.leagueService.leagueUser = null;
     this.sleeperApiService.getSleeperLeagueByLeagueId(demoId || this.sleeperLeagueIdInput).subscribe(leagueData => {
       this.leagueSwitchService.loadLeague(leagueData);
     });
@@ -241,8 +260,8 @@ export class HomeComponent extends BaseComponent implements OnInit, AfterViewIni
    * handles logging in with mfl league id
    */
   loginWithMFLLeagueId(year?: string, leagueId?: string): void {
-    this.mflApiService.getMFLLeague(year || this.selectedYear, leagueId || this.mflLeagueIdInput).subscribe(leagueData => {
-      this.leagueSwitchService.loadLeague(this.mflService.fromMFLLeague(leagueData.league, year || this.selectedYear));
+    this.mflService.loadLeagueFromId$(year || this.selectedYear, leagueId || this.mflLeagueIdInput).subscribe(leagueData => {
+      this.leagueSwitchService.loadLeague(leagueData);
     });
   }
 
@@ -270,5 +289,13 @@ export class HomeComponent extends BaseComponent implements OnInit, AfterViewIni
       default:
         return 'League';
     }
+  }
+
+  /**
+   * Opens url for slide
+   * @param slide slide object with url to open
+   */
+  openSlideUrl(slide: any): void {
+    window.open(slide.url, '_blank');
   }
 }

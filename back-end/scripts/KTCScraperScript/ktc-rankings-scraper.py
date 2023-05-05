@@ -7,44 +7,19 @@ from BeautifulSoupService import setUpSoup
 from PlayerService import cleanPlayerIdString
 from FantasyCalcService import fetchSuperFlexPlayerDict, fetchStandardPlayerDict
 from DynastyProcessService import fetchDynastyProcessPlayerValues
+from Constants import playerExceptionsMap
 
 # API calls to sleeper
 players = Players()
 sleeperData = players.get_all_players()
-
 
 # creates a dict of sleeper ids mapped to name ids
 def getSleeperData():
     temp = {}
     for playerId, value in sleeperData.items():
         if value['active']:
-            sleepervalue = cleanPlayerIdString(str(value['first_name'] + value['last_name'] + str(value['position'])))
-            temp[sleepervalue] = playerId
-            # handle edge cases
-            # P.J. Walker
-            if value['first_name'] == 'Phillip':
-                sleepervalue = cleanPlayerIdString(str('pj' + value['last_name'] + str(value['position'])).lower())
-                temp[sleepervalue] = playerId
-            # Chris Herdon
-            if value['first_name'] == 'Christopher':
-                sleepervalue = cleanPlayerIdString(str('chris' + value['last_name'] + str(value['position'])).lower())
-                temp[sleepervalue] = playerId
-            # Jeffery Wilson
-            if value['first_name'] == 'Jeff':
-                sleepervalue = cleanPlayerIdString(str('jeffery' + value['last_name'] + str(value['position'])).lower())
-                temp[sleepervalue] = playerId
-            # Isiah Pacheco
-            if value['last_name'] == 'Pacheco':
-                sleepervalue = cleanPlayerIdString(str('isiah' + value['last_name'] + str(value['position'])).lower())
-                temp[sleepervalue] = playerId
-            # Nathaniel Dell
-            if value['last_name'] == 'Dell' and value['first_name'] == 'Nathaniel':
-                sleepervalue = cleanPlayerIdString(str('tank' + value['last_name'] + str(value['position'])).lower())
-                temp[sleepervalue] = playerId
-            # Camerun Peoples
-            if value['last_name'] == 'Peoples' and value['first_name'] == 'Camerun':
-                sleepervalue = cleanPlayerIdString(str('Cam' + value['last_name'] + str(value['position'])).lower())
-                temp[sleepervalue] = playerId
+            playerNameId = cleanPlayerIdString(str(value['first_name'] + value['last_name'] + str(value['position'])))
+            temp[playerNameId] = playerId     
     return temp
 
 
@@ -53,8 +28,7 @@ class Player:
     def __init__(self, id, name, first_name, last_name, team, position, sfPositionRank, positionRank, age, experience,
                  sf_value, value, sleeperId=None, college=None, injury_status=None, weight=None, height=None,
                  jersey_number=-1, active=None, mflId=None, fc_sf_value=None, fc_value=None, fc_position_rank=None,
-                 fc_sf_position_rank=None, dp_sf_value=None, dp_value=None, dp_sf_position_rank=None, dp_position_rank=None
-                 ):
+                 fc_sf_position_rank=None, dp_sf_value=None, dp_value=None, dp_sf_position_rank=None, dp_position_rank=None):
         self.id = id
         self.name = name
         self.first_name = first_name
@@ -259,8 +233,7 @@ try:
                     updated_at = now(); '''
                 cursor.execute(playerInfoStatement, (
                     player.id, player.name, player.first_name, player.last_name, player.team, player.position,
-                    player.age,
-                    player.experience, player.college, player.injury_status, player.weight, player.height,
+                    player.age, player.experience, player.college, player.injury_status, player.weight, player.height,
                     player.jersey_number, player.active, player.id, player.name, player.first_name, player.last_name,
                     player.team, player.position, player.age, player.experience, player.college, player.injury_status,
                     player.weight, player.height, player.jersey_number, player.active))

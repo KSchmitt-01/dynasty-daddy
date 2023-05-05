@@ -41,6 +41,9 @@ export class PortfolioService {
   /** player table metadata to display */
   playerHoldingMap: {} = {};
 
+  /** total value of each position group */
+  positionGroupValueMap: {} = [];
+
   /** league map to display in subtable */
   leagueIdMap: {} = {};
 
@@ -50,6 +53,7 @@ export class PortfolioService {
   /** count of leagues applies, used for exposure */
   leagueCount: number = 0;
 
+  /** league batches dict */
   leagueBatches: {} = {};
 
   /** mfl username */
@@ -63,6 +67,17 @@ export class PortfolioService {
 
   /** fleaflicker email string */
   fleaflickerEmail: string = '';
+
+  /** portfoliot advance query */
+  query = {
+    condition: 'and',
+    rules: [
+      { field: 'sf_trade_value', operator: '>=', value: '6000' },
+    ]
+  };
+
+  /** is portfolio advanced filter active */
+  advancedFiltering: boolean = false;
 
   constructor(
     private fantasyPlayerApiService: FantasyPlayerApiService,
@@ -82,13 +97,14 @@ export class PortfolioService {
   updatePortfolio(): void {
     this.playersWithValue = [];
     this.playerHoldingMap = {};
+    this.positionGroupValueMap = {};
     this.leagueCount = 0;
     this.appliedLeagues.forEach(league => {
       this.leagueCount++;
       const leagueInfo = this.portfolio.leagues[league.platform]?.leagues?.find(l => l.leagueId === league.leagueId);
       this.leagueIdMap[league.leagueId] = {
         name: leagueInfo.name,
-        scoring: league.platform !== LeaguePlatform.FLEAFLICKER && leagueInfo instanceof LeagueDTO ? (leagueInfo as LeagueDTO).getDisplayNameLeagueScoringFormat() || '-' : '-',
+        scoring: league.platform === LeaguePlatform.SLEEPER && leagueInfo instanceof LeagueDTO ? (leagueInfo as LeagueDTO).getDisplayNameLeagueScoringFormat() || '-' : '-',
         isSuperflex: leagueInfo.isSuperflex == true ? 'Superflex' : '1 QB',
         startCount: leagueInfo.rosterPositions && leagueInfo.rosterPositions.length > 0 ? 'Start ' + leagueInfo.rosterPositions?.filter(p => ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX'].includes(p)).length : '-',
         platformDisplay: this.displayService.getDisplayNameForPlatform(leagueInfo.leaguePlatform),
@@ -101,6 +117,7 @@ export class PortfolioService {
       this.addPlayersToList(uniquePlayers, leagueInfo)
     });
     const playersToGet = this.playersWithValue.filter(p => !this.fantasyPortfolioDict[p.name_id] && ['QB', 'RB', 'WR', 'TE'].includes(p.position)).map(p => p?.name_id)
+    localStorage.setItem('portfolio', JSON.stringify(this.portfolio));
     this.fantasyPlayerApiService.getFantasyPortfolio(181, playersToGet).subscribe(
       p => {
         for (let key in p) {
@@ -109,10 +126,10 @@ export class PortfolioService {
         this.portfolioValuesUpdated$.next();
       }
     ),
-    error => {
-      console.error('Error Loading Portfolio', error, playersToGet)
-      this.portfolioValuesUpdated$.next();
-    }
+      error => {
+        console.error('Error Loading Portfolio', error, playersToGet)
+        this.portfolioValuesUpdated$.next();
+      }
   }
 
   /**
@@ -127,6 +144,10 @@ export class PortfolioService {
         const playerInfo = this.playerPlatformIdMap[league.leaguePlatform]?.[platformId];
         if (playerInfo) {
           ddPlayer = new FantasyPlayer();
+          // For team defense, they don't set full name
+          if (!playerInfo.full_name) {
+            playerInfo.full_name = `${playerInfo.first_name} ${playerInfo.last_name}`
+          }
           ddPlayer.name_id = playerInfo.full_name.replace("'", "").replace(".", "");
           ddPlayer.full_name = playerInfo.full_name;
           ddPlayer.sf_trade_value = 0;
@@ -136,6 +157,10 @@ export class PortfolioService {
         }
       }
       if (ddPlayer) {
+        if (!this.positionGroupValueMap[ddPlayer.position]) {
+          this.positionGroupValueMap[ddPlayer.position] = 0;
+        }
+        this.positionGroupValueMap[ddPlayer.position] += league.isSuperflex ? ddPlayer.sf_trade_value : ddPlayer.trade_value;
         if (this.playersWithValue.map(it => it.name_id).includes(ddPlayer.name_id)) {
           this.playerHoldingMap[ddPlayer.name_id].shares++;
           this.playerHoldingMap[ddPlayer.name_id][league.isSuperflex ? 'superflex' : 'standard']++;

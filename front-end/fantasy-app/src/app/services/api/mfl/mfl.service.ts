@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
-import { forkJoin, Observable, of, throwError } from 'rxjs';
+import { from, Observable, of, throwError } from 'rxjs';
 import { LeagueWrapper } from '../../../model/league/LeagueWrapper';
 import { MflApiService } from './mfl-api.service';
 import { LeagueOwnerDTO } from '../../../model/league/LeagueOwnerDTO';
 import { LeagueTeam } from '../../../model/league/LeagueTeam';
 import { LeagueCompletedPickDTO } from '../../../model/league/LeagueCompletedPickDTO';
 import { LeagueRosterDTO } from '../../../model/league/LeagueRosterDTO';
-import { map, mergeMap, concatMap, retry, catchError, delay } from 'rxjs/operators';
+import { map, mergeMap, concatMap, retry, catchError, delay, switchMap, toArray } from 'rxjs/operators';
 import { LeagueTeamMatchUpDTO } from '../../../model/league/LeagueTeamMatchUpDTO';
 import { LeagueRawDraftOrderDTO } from '../../../model/league/LeagueRawDraftOrderDTO';
 import { TeamMetrics } from '../../../model/league/TeamMetrics';
@@ -25,7 +25,14 @@ import { Status } from 'src/app/components/model/status';
 })
 export class MflService {
 
+  /** default team logo */
   private DEFAULT_TEAM_LOGO = 'http://myfantasyleague.com/images/mfl_logo/updates/new_mfl_logo_80x80.gif';
+
+  /** Request Delay for api calls to prevent 429s */
+  private REQUEST_DELAY = 500
+
+  /** MFL user id to send to MFL API requests */
+  mflUserId: string = null;
 
   constructor(private mflApiService: MflApiService, private nflService: NflService) {
   }
@@ -36,7 +43,7 @@ export class MflService {
    * @param leagueId string
    */
   loadLeagueFromId$(year: string, leagueId: string): Observable<LeagueDTO> {
-    return this.mflApiService.getMFLLeague(year, leagueId).pipe(map((leagueInfo) => {
+    return this.mflApiService.getMFLLeague(year, leagueId, this.mflUserId).pipe(map((leagueInfo) => {
       return this.fromMFLLeague(leagueInfo.league, year);
     }));
   }
@@ -54,74 +61,106 @@ export class MflService {
     const leagueTransactions = {};
     let leagueRosters: any = null;
     let teamMetrics = {};
-    let teamDraftCapital = {};
     let playoffMatchUps = [];
     let completedDraft = null;
-    observableList.push(this.mflApiService.getMFLTransactions(year, leagueId).pipe(map((leagueTrans) => {
-      leagueTransactions[1] = this.marshallLeagueTransactions(leagueTrans?.transactions?.transaction, leagueWrapper.selectedLeague.season);
-      return of(leagueTransactions);
-    })));
-    observableList.push(this.mflApiService.getMFLSchedules(year, leagueId).pipe(map((leagueSchedule) => {
-      leagueMatchUps = this.marshallLeagueMatchUps(leagueSchedule?.schedule?.weeklySchedule);
-      return of(leagueMatchUps);
-    })));
-    observableList.push(this.mflApiService.getMFLRosters(year, leagueId).pipe(map(rosters => {
-      leagueRosters = rosters.rosters.franchise;
-      return of(leagueRosters);
-    })));
-    observableList.push(this.mflApiService.getMFLLeagueStandings(year, leagueId).pipe(map(metrics => {
-      teamMetrics = this.marshallLeagueTeamMetrics(metrics);
-      return of(leagueRosters);
-    })));
-    // only load future draft capital if dynasty league
-    if (leagueWrapper.selectedLeague.type === LeagueType.DYNASTY) {
-      // get future pick year since it will filter out current year picks
-      const pickYear = year === new Date().getFullYear().toString() ? this.nflService.getYearForStats() : year
-      observableList.push(this.mflApiService.getMFLFutureDraftPicks(pickYear, leagueId).pipe(map(draftPicks => {
-        teamDraftCapital = this.marshallFutureDraftCapital(draftPicks?.futureDraftPicks?.franchise);
-        return of(leagueRosters);
-      })));
-    }
+    observableList.push(
+      this.mflApiService.getMFLTransactions(year, leagueId, this.mflUserId).pipe(
+        map((leagueTrans) => {
+          leagueTransactions[1] = this.marshallLeagueTransactions(leagueTrans?.transactions?.transaction, leagueWrapper.selectedLeague.season);
+          return of(leagueTransactions);
+        })
+      )
+    );
+    observableList.push(
+      this.mflApiService.getMFLSchedules(year, leagueId, this.mflUserId).pipe(
+        map((leagueSchedule) => {
+          leagueMatchUps = this.marshallLeagueMatchUps(leagueSchedule?.schedule?.weeklySchedule);
+          return of(leagueMatchUps);
+        })
+      )
+    );
+    observableList.push(
+      this.mflApiService.getMFLRosters(year, leagueId, this.mflUserId).pipe(
+        map(rosters => {
+          leagueRosters = rosters.rosters.franchise;
+          return of(leagueRosters);
+        })
+      )
+    );
+    observableList.push(
+      this.mflApiService.getMFLLeagueStandings(year, leagueId, this.mflUserId).pipe(
+        map(metrics => {
+          teamMetrics = this.marshallLeagueTeamMetrics(metrics);
+          return of(leagueRosters);
+        })
+      )
+    );
     // only load draft if it existed on platform
-    if (leagueWrapper.selectedLeague.metadata.loadRosters === 'live_draft' ||
-      leagueWrapper.selectedLeague.metadata.loadRosters === 'email_draft') {
-      observableList.push(this.mflApiService.getMFLDraftResults(year, leagueId).pipe(map(draftResults => {
-        completedDraft = this.marshallDraftResults(
-          draftResults.draftResults.draftUnit,
-          leagueId,
-          leagueWrapper?.selectedLeague?.metadata?.draftPoolType,
-          leagueWrapper.selectedLeague?.totalRosters
-        );
-        return of(leagueRosters);
-      })));
+    if (
+      leagueWrapper.selectedLeague.metadata.loadRosters === 'live_draft' ||
+      leagueWrapper.selectedLeague.metadata.loadRosters === 'email_draft'
+    ) {
+      observableList.push(
+        this.mflApiService.getMFLDraftResults(year, leagueId, this.mflUserId).pipe(
+          map(draftResults => {
+            completedDraft = this.marshallDraftResults(
+              draftResults.draftResults?.draftUnit,
+              leagueId,
+              leagueWrapper?.selectedLeague?.metadata?.draftPoolType,
+              leagueWrapper.selectedLeague?.totalRosters
+            );
+            return of(leagueRosters);
+          })
+        )
+      );
     }
-    return forkJoin(observableList).pipe(map(() => {
+    return from(observableList).pipe(
+      concatMap((observable) => {
+        return observable.pipe(delay(this.REQUEST_DELAY));
+      }),
+      toArray(),
+      switchMap(() => {
       leagueWrapper.selectedLeague.leagueMatchUps = leagueMatchUps;
       leagueWrapper.selectedLeague.leagueTransactions = leagueTransactions;
       leagueWrapper.playoffMatchUps = playoffMatchUps;
       leagueWrapper.leaguePlatform = LeaguePlatform.MFL;
-      const teams = [];
-      leagueWrapper.selectedLeague?.metadata?.rosters?.forEach(team => {
-        const ddTeam = new LeagueTeam(null, null);
-        ddTeam.owner = new LeagueOwnerDTO(team.id, team.name, team.name, team.icon || this.DEFAULT_TEAM_LOGO);
-        const roster = leagueRosters.find(it => it.id === team.id).player;
-        ddTeam.roster = new LeagueRosterDTO(
-          this.formatRosterId(team.id),
-          team.id,
-          roster?.map(player => player.id),
-          roster?.filter(player => player.status === 'INJURED_RESERVE').map(player => player.id),
-          roster?.filter(player => player.status === 'TAXI_SQUAD').map(player => player.id),
-          null
-        );
-        ddTeam.roster.teamMetrics = teamMetrics[ddTeam.roster.ownerId] || new TeamMetrics(null);
-        // index in the division array so we want 0 to be default 
-        ddTeam.roster.teamMetrics.division = team.division ? Number(team.division) + 1 : 0;
-        ddTeam.futureDraftCapital = teamDraftCapital[ddTeam.roster.ownerId] || [];
-        teams.push(ddTeam);
-      });
-      leagueWrapper.leagueTeamDetails = teams;
       leagueWrapper.completedDrafts = completedDraft ? [completedDraft] : [];
-      return leagueWrapper;
+      // get future pick year since it will filter out current year picks
+      const pickYear = year === new Date().getFullYear().toString() &&
+        (leagueWrapper.completedDrafts.length === 0 || leagueWrapper.completedDrafts[0].draft?.status !== 'completed') ?
+        this.nflService.getYearForStats() : year
+      const observable = leagueWrapper.selectedLeague.type === LeagueType.DYNASTY ?
+        this.mflApiService.getMFLFutureDraftPicks(pickYear, leagueId, this.mflUserId).pipe(
+          map(draftPicks => {
+            const teamDraftCapital = this.marshallFutureDraftCapital(draftPicks?.futureDraftPicks?.franchise);
+            return teamDraftCapital;
+          })
+        ) :
+        of([]);
+      return observable.pipe(map(teamDraftCapital => {
+        const teams = [];
+        leagueWrapper.selectedLeague?.metadata?.rosters?.forEach(team => {
+          const ddTeam = new LeagueTeam(null, null);
+          ddTeam.owner = new LeagueOwnerDTO(team.id, team.name, team.name, team.icon || this.DEFAULT_TEAM_LOGO);
+          const roster = leagueRosters.find(it => it.id === team.id)?.player || [];
+          ddTeam.roster = new LeagueRosterDTO(
+            this.formatRosterId(team.id),
+            team.id,
+            roster?.map(player => player.id),
+            roster?.filter(player => player.status === 'INJURED_RESERVE').map(player => player.id),
+            roster?.filter(player => player.status === 'TAXI_SQUAD').map(player => player.id),
+            null
+          );
+          ddTeam.roster.teamMetrics = teamMetrics[ddTeam.roster.ownerId] || new TeamMetrics(null);
+          // index in the division array so we want 0 to be default 
+          ddTeam.roster.teamMetrics.division = team.division ? Number(team.division) + 1 : 0;
+          // only load future draft capital if dynasty league
+          ddTeam.futureDraftCapital = teamDraftCapital[ddTeam.roster.ownerId] || [];
+          teams.push(ddTeam);
+        });
+        leagueWrapper.leagueTeamDetails = teams;
+        return leagueWrapper;
+      }));
     }));
   }
 
@@ -197,31 +236,40 @@ export class MflService {
    * @returns 
    */
   loadLeagueFromList$(leagues: LeagueDTO[], year: string): Observable<LeagueDTO[]> {
-    const observableList = leagues?.map(league => {
-      return this.loadLeagueFromId$(year, league.leagueId).pipe(concatMap(leagueInfo => {
-        return this.mflApiService.getMFLRosters(year, league.leagueId).pipe(
-          retry(2),
+    return from(leagues).pipe(
+      concatMap(league => {
+        return this.mflApiService.getMFLRosters(year, league.leagueId, this.mflUserId).pipe(
           catchError(error => {
             console.error('Failed to fetch data:', error);
             return of([]);
           }),
           concatMap(rosters => {
             league.metadata['status'] = Status.DONE;
-            const roster = rosters.rosters.franchise.find(it => this.formatRosterId(it.id) === league?.metadata?.teamId)?.player;
+            const roster = rosters.rosters.franchise.find(it => this.formatRosterId(it.id) === league?.metadata?.teamId)?.player || [];
             league.metadata['roster'] = roster?.map(player => player.id);
-            league.isSuperflex = leagueInfo.isSuperflex;
-            league.rosterPositions = leagueInfo.rosterPositions;
-            league.totalRosters = leagueInfo.totalRosters;
-            league.scoringFormat = leagueInfo.scoringFormat;
-            league.type = leagueInfo.type;
-            league.leaguePlatform = LeaguePlatform.MFL;
-            league.season = leagueInfo.season;
-            return of(league).pipe(delay(2000));
+            return of(league).pipe(
+              delay(this.REQUEST_DELAY * 2),
+              concatMap(() => {
+                return this.loadLeagueFromId$(year, league.leagueId).pipe(
+                  map(leagueInfo => {
+                    league.isSuperflex = leagueInfo.isSuperflex;
+                    league.rosterPositions = leagueInfo.rosterPositions;
+                    league.totalRosters = leagueInfo.totalRosters;
+                    league.scoringFormat = leagueInfo.scoringFormat;
+                    league.type = leagueInfo.type;
+                    league.leaguePlatform = LeaguePlatform.MFL;
+                    league.season = leagueInfo.season;
+                    return league;
+                  }),
+                  delay(this.REQUEST_DELAY * 2)
+                );
+              })
+            );
           })
         );
-      }));
-    })
-    return forkJoin(observableList).pipe(concatMap(() => of(leagues).pipe(delay(1000))));
+      }),
+      toArray()
+    );
   }
 
   /**
@@ -236,11 +284,13 @@ export class MflService {
         console.warn('User data could not be found. Try again!');
         return null;
       }
+      this.mflUserId = response.mfl_user_id;
+
       const userData = new LeagueUserDTO()
       userData.username = username;
 
       const leagues = []
-      response?.forEach(league => {
+      response?.leagues?.forEach(league => {
         const newLeague = new LeagueDTO()
         newLeague.leagueId = league.league_id;
         newLeague.name = league?.name;
@@ -251,9 +301,9 @@ export class MflService {
       })
       return { leagues, userData, leaguePlatform: LeaguePlatform.MFL }
     }),
-    catchError(error => {
-      return throwError(error);
-    }));
+      catchError(error => {
+        return throwError(error);
+      }));
   }
 
   /**
@@ -278,8 +328,8 @@ export class MflService {
    * @param starters starters json list
    * @param rosterSize size of roster
    */
-  private generateRosterPositions(starters, rosterSize): string[] {
-    let count = Number(starters.count) - (Number(starters.idp_starters) || Number(starters.iop_starters) || 0);
+  private generateRosterPositions(starters: any, rosterSize: any): string[] {
+    let count = Number(starters.count) - (Number(starters.idp_starters) || 0) - (Number(starters.kdst_starters) || 0);
     const positionMap = [];
     const validStartersList = ['QB', 'RB', 'WR', 'TE'];
     // generate min count
@@ -331,7 +381,7 @@ export class MflService {
       return (new LeagueCompletedPickDTO(null).fromMFL(pick, teamCount));
     });
     return new CompletedDraft(
-      new LeagueRawDraftOrderDTO(draftId.toString(), leagueId, 'completed', null,
+      new LeagueRawDraftOrderDTO(draftId.toString(), leagueId, picks[0]?.playerId != "" ? 'completed' : 'in_progress', null,
         null, null, null, null).fromMFL(draft, playerType, (picks?.length || teamCount * 4) / teamCount),
       picks
     );
@@ -346,9 +396,11 @@ export class MflService {
     picks?.forEach(team => {
       if (Array.isArray(team.futureDraftPick)) {
         picksDict[team.id] = team.futureDraftPick?.map(pick =>
-          new DraftCapital(Number(pick.round), 6, pick.year, pick.originalPickFor));
+          new DraftCapital(Number(pick.round), 6, pick.year, this.formatRosterId(pick.originalPickFor)));
+      } else if (team.futureDraftPick) {
+        picksDict[team.id] = picks ? [new DraftCapital(Number(picks.round), 6, picks.year, this.formatRosterId(picks.originalPickFor))] : [];
       } else {
-        picksDict[team.id] = picks ? [new DraftCapital(Number(picks.round), 6, picks.year, picks.originalPickFor)] : [];
+        picksDict[team.id] = [];
       }
     });
     return picksDict;
@@ -387,10 +439,8 @@ export class MflService {
    * @param matchUpId match up id
    */
   private mapTeamMatchUpFromFranchiseScheduleObject(matchUp: any, matchUpId: number): LeagueTeamMatchUpDTO {
-    const newMatchUpData = new LeagueTeamMatchUpDTO(null);
-    newMatchUpData.points = Number(matchUp?.score) || 0;
-    newMatchUpData.matchupId = matchUpId;
-    newMatchUpData.rosterId = this.formatRosterId(matchUp.id);
+    const newMatchUpData = new LeagueTeamMatchUpDTO();
+    newMatchUpData.createMatchUpObject(matchUpId, Number(matchUp?.score) || 0, this.formatRosterId(matchUp.id));
     return newMatchUpData;
   }
 
