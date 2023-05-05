@@ -197,8 +197,7 @@ export class DraftService {
           })
           //sort value low to high
           playerOptions.sort((a, b) => playerValueMap[b.name_id] - playerValueMap[a.name_id])
-          const weightedPickSelections = this.generatePercentageArray();
-          this.mockDraftSelectedPlayers.push(this.weighted_random_selection(playerOptions, weightedPickSelections));
+          this.mockDraftSelectedPlayers.push(this.weightedRandomChoice(playerOptions));
         });
         break;
       default:
@@ -207,51 +206,41 @@ export class DraftService {
     }
   }
 
-  /**
-   * create an array of selection weights
+    /**
+   * Selecet a player to be drafted
+   * @param players - array of players that can be selected
    * @private
-   * returns list of weights
+   * returns player object
    */
-  private generatePercentageArray() {
-    const arr = [];
-    let remaining = 1;
-    
-    for (let i = 0; i < 5; i++) {
-      const max = remaining / (6 - i);
-      const random = Math.random();
-      const exponent = Math.pow(random, 3 + 100/this.randomnessWeight); // control degree of skew
-      const value = max * exponent;
-      arr.push(value);
-      remaining -= value;
-    }
-    
-    arr.push(remaining);
-    arr.sort((a, b) => b - a);
-    return arr;
-  }
+  private weightedRandomChoice(players) {
+    const power = 2;
+    const threshold = 0.15; // adjust for deterministic selections (if player is x percent above next closest select that player)
 
-  /**
-   * Select a random player given a percentage they should be selected
-   * @param players avaliable players
-   * @param weights array of selection weightss
-   * @private
-   * returns FantasyPlayer
-   */
-  private weighted_random_selection(players, weights) {
-    var i;
+    const weights = players.map(p => {
+        const playerValue = this.leagueService.selectedLeague.isSuperflex ? p.sf_trade_value : p.trade_value;
+        const adjustedRandomness = (Math.random() * this.randomnessWeight / 100 * playerValue);
+        return Math.pow(playerValue, power) + adjustedRandomness;
+    });
 
-    for (i = 1; i < weights.length; i++){
-      weights[i] += weights[i - 1];
+    const maxValue = Math.max(...weights);
+    const secondMaxValue = Math.max(...weights.filter(w => w !== maxValue));
+    const difference = maxValue - secondMaxValue;
+
+    if (difference / maxValue > threshold) {
+        const maxIndex = weights.findIndex(w => w === maxValue);
+        return players[maxIndex];
+    } else {
+        const totalWeight = weights.reduce((acc, cur) => acc + cur, 0);
+        const randomWeight = Math.random() * totalWeight;
+
+        let accumulatedWeight = 0;
+        for (let i = 0; i < players.length; i++) {
+            accumulatedWeight += weights[i];
+            if (accumulatedWeight >= randomWeight) {
+                return players[i];
+            }
+        }
     }
-    
-    var random = Math.random() * weights[weights.length - 1];
-    
-    for (i = 0; i < weights.length; i++){
-      if (weights[i] > random)
-          break;
-    }
-    
-    return players[i];
 }
 
   /**
