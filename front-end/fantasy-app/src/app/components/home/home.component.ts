@@ -20,12 +20,11 @@ import { ESPNService } from 'src/app/services/api/espn/espn.service';
   styleUrls: ['./home.component.css']
 })
 export class HomeComponent extends BaseComponent implements OnInit, AfterViewInit {
-  //don't forget to remove hardcode
   /** sleeper username input */
-  usernameInput: string = 'kschmitt1';
+  usernameInput: string = '';
 
   /** sleeper league id input */
-  sleeperLeagueIdInput: string = '916269956172546048';
+  sleeperLeagueIdInput: string = '';
 
   /** mfl league id input */
   mflLeagueIdInput: string = '';
