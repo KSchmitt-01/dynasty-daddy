@@ -60,7 +60,20 @@ export class FantasyPortfolioComponent extends BaseComponent implements OnInit {
     ngOnInit(): void {
         // if portfolio exists in localstorage fetch it 
         if (!this.portfolioService.portfolio && localStorage.getItem('portfolio')) {
-            this.portfolioService.portfolio = JSON.parse(localStorage.getItem('portfolio'))
+            this.portfolioService.portfolio = JSON.parse(localStorage.getItem('portfolio'));
+            // get MFL portfolio id if stored
+            if (localStorage.getItem('portfolioMFLUserId')) {
+                this.portfolioService.portfolioMFLUserId = localStorage.getItem('portfolioMFLUserId');
+            }
+            this.portfolioService.portfolio.leagues.forEach(league => {
+                if (league && !this.portfolioService.playerPlatformIdMap[league.leaguePlatform]) {
+                    this.portfolioService.setPlatformIdMaps(
+                        league.leaguePlatform,
+                        league.leagues[0].leagueId,
+                        league.leagues[0].season
+                    )
+                }
+            });
         }
         this.playerService.loadPlayerValuesForToday();
         this.setUpPortfolio();
@@ -111,6 +124,7 @@ export class FantasyPortfolioComponent extends BaseComponent implements OnInit {
         this.portfolioService.portfolio = new Portfolio();
         this.portfolioService.appliedLeagues = [];
         localStorage.removeItem('portfolio');
+        localStorage.removeItem('portfolioMFLUserId');
         this.selectableLeagues = [];
         this.selectedLeagues.reset();
         this.portfolioService.portfolioValuesUpdated$.next();
@@ -157,7 +171,7 @@ export class FantasyPortfolioComponent extends BaseComponent implements OnInit {
     exportPortfolioTable(): void {
         const playerData: any[][] = []
         playerData.push([
-            ['Name', 'Position', 'Age', 'Shares', 'Exposure %', 'Price (SF)', 'Price (STD)', 'Total Value', 'Pos Group %', 'Monthly Trend (SF)', 'Monthly Trend (STD)'],
+            ['Name', 'Position', 'Age', 'Shares', 'Exposure %', 'Price (SF)', 'Price (STD)', 'Total Value', 'Pos Group %', 'Monthly Trend (SF)', 'Monthly Trend (STD)', 'Leagues'],
         ]);
         this.playerPortfolioWithValue.slice()
             .sort((a, b) => this.portfolioService.playerHoldingMap[b.name_id].shares - this.portfolioService.playerHoldingMap[a.name_id].shares ||
@@ -173,7 +187,9 @@ export class FantasyPortfolioComponent extends BaseComponent implements OnInit {
                     Math.round(((this.portfolioService.playerHoldingMap[player.name_id]?.totalValue || 0) /
                         this.portfolioService.positionGroupValueMap[player.position]) * 100) + '%' : '0%',
                 `${player?.sf_change || 0}% (${player?.last_month_value_sf || 0})`,
-                `${player?.standard_change || 0}% (${player?.last_month_value || 0})`
+                `${player?.standard_change || 0}% (${player?.last_month_value || 0})`,
+                this.portfolioService.playerHoldingMap[player.name_id].leagues
+                    .map(leagueId => this.portfolioService.leagueIdMap[leagueId].name)
                 ];
                 playerData.push(playerRow);
             });

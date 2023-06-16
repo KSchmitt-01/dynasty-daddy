@@ -82,15 +82,15 @@ export class MflApiService {
    * @param username mfl username
    * @param password mfl password
    */
-  getMFLLeaguesForUser(username: string, password: string): Observable<any> {
-    return this.http.post<any>(this.mflApiConfigService.getMFLLeaguesForUser, { username, password }).pipe(map(
+  getMFLLeaguesForUser(username: string, password: string, season: string): Observable<any> {
+    return this.http.post<any>(this.mflApiConfigService.getMFLLeaguesForUser, { username, password, season }).pipe(map(
       (userLeagues: any) => {
         return userLeagues;
       }
     ),
-    catchError(error => {
-      return throwError(error);
-    }));
+      catchError(error => {
+        return throwError(error);
+      }));
   }
 
   /**
@@ -133,6 +133,19 @@ export class MflApiService {
           playerMap[p.id] = { position: p.position, full_name: nameArr[1] + ' ' + nameArr[0] };
         });
         return playerMap;
+      }
+    ));
+  }
+
+  /**
+ * fetch additional team standings information
+ * @param year season
+ * @param leagueId league id
+ */
+  postMFLWaiverMove(year: string, leagueId: string, body: any): Observable<any> {
+    return this.http.post<any>(this.mflApiConfigService.postMFLWaiverMoveEndpoint + '?leagueId=' + leagueId + '&year=' + year, body).pipe(map(
+      (res: any) => {
+        return res;
       }
     ));
   }

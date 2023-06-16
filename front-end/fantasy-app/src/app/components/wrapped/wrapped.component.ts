@@ -22,7 +22,11 @@ import { WrappedService } from '../services/wrapped.service';
     /** a league that hasn't been started error message */
     leagueNotStartedErrMsg = 'League has not started yet so could not generate Wrapped. Please load previous league to view Wrapped.';
 
-    constructor(public wrappedService: WrappedService, public leagueService: LeagueService, private playersService: PlayerService, private leagueSwitchService: LeagueSwitchService, private route: ActivatedRoute) {
+    constructor(public wrappedService: WrappedService,
+       public leagueService: LeagueService,
+       private playersService: PlayerService,
+       private leagueSwitchService: LeagueSwitchService,
+       private route: ActivatedRoute) {
         super();
     }
     

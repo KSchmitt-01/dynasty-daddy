@@ -11,6 +11,7 @@ import { PlayerService } from 'src/app/services/player.service';
 import { DisplayService } from 'src/app/services/utilities/display.service';
 import { Portfolio } from '../model/portfolio';
 import { Status } from '../model/status';
+import { MflService } from 'src/app/services/api/mfl/mfl.service';
 
 @Injectable({
   providedIn: 'root'
@@ -62,6 +63,9 @@ export class PortfolioService {
   /** mfl password */
   mflPassword: string = '';
 
+  /** mfl user id for write back */
+  portfolioMFLUserId: string = '';
+
   /** sleeper username input */
   sleeperUsername: string = '';
 
@@ -83,11 +87,11 @@ export class PortfolioService {
     private fantasyPlayerApiService: FantasyPlayerApiService,
     private sleeperApiService: SleeperApiService,
     private mflApiService: MflApiService,
+    private mflService: MflService,
     private fleaflickerService: FleaflickerService,
     private displayService: DisplayService,
     private playerService: PlayerService,
   ) {
-
   }
 
   /**
@@ -104,7 +108,7 @@ export class PortfolioService {
       const leagueInfo = this.portfolio.leagues[league.platform]?.leagues?.find(l => l.leagueId === league.leagueId);
       this.leagueIdMap[league.leagueId] = {
         name: leagueInfo.name,
-        scoring: league.platform === LeaguePlatform.SLEEPER && leagueInfo instanceof LeagueDTO ? (leagueInfo as LeagueDTO).getDisplayNameLeagueScoringFormat() || '-' : '-',
+        scoring: league.platform === LeaguePlatform.SLEEPER ? this.displayService.getDisplayNameLeagueScoringFormat(leagueInfo?.scoringFormat) : '-',
         isSuperflex: leagueInfo.isSuperflex == true ? 'Superflex' : '1 QB',
         startCount: leagueInfo.rosterPositions && leagueInfo.rosterPositions.length > 0 ? 'Start ' + leagueInfo.rosterPositions?.filter(p => ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX'].includes(p)).length : '-',
         platformDisplay: this.displayService.getDisplayNameForPlatform(leagueInfo.leaguePlatform),
@@ -118,6 +122,7 @@ export class PortfolioService {
     });
     const playersToGet = this.playersWithValue.filter(p => !this.fantasyPortfolioDict[p.name_id] && ['QB', 'RB', 'WR', 'TE'].includes(p.position)).map(p => p?.name_id)
     localStorage.setItem('portfolio', JSON.stringify(this.portfolio));
+    localStorage.setItem('portfolioMFLUserId', this.portfolioMFLUserId);
     this.fantasyPlayerApiService.getFantasyPortfolio(181, playersToGet).subscribe(
       p => {
         for (let key in p) {
@@ -138,23 +143,27 @@ export class PortfolioService {
    * @param league LeagueDTO
    */
   private addPlayersToList(leaguePlayers: string[], league: LeagueDTO): void {
-    leaguePlayers.forEach(platformId => {
-      let ddPlayer = this.playerService.getPlayerByPlayerPlatformId(platformId, league.leaguePlatform);
+    leaguePlayers.forEach(platformPlayerId => {
+      let ddPlayer = this.playerService.getPlayerByPlayerPlatformId(platformPlayerId, league.leaguePlatform);
+      let playerInfo = this.playerPlatformIdMap[league.leaguePlatform]?.[platformPlayerId];
+      // if id is not found then just display league id, custom logic for custom players added to MFL leagues
+      if (!playerInfo || (league.leaguePlatform === LeaguePlatform.MFL && platformPlayerId.length === 4 && platformPlayerId[0] === '0')) {
+        playerInfo = {};
+        playerInfo.full_name = this.displayService.getDisplayNameForPlatform(league.leaguePlatform) + ' ID: ' + platformPlayerId;
+        playerInfo.team = 'FA';
+        playerInfo.position = '??';
+      }
       if (!ddPlayer) {
-        const playerInfo = this.playerPlatformIdMap[league.leaguePlatform]?.[platformId];
-        if (playerInfo) {
-          ddPlayer = new FantasyPlayer();
-          // For team defense, they don't set full name
-          if (!playerInfo.full_name) {
-            playerInfo.full_name = `${playerInfo.first_name} ${playerInfo.last_name}`
-          }
-          ddPlayer.name_id = playerInfo.full_name.replace("'", "").replace(".", "");
-          ddPlayer.full_name = playerInfo.full_name;
-          ddPlayer.sf_trade_value = 0;
-          ddPlayer.trade_value = 0;
-          ddPlayer.team = playerInfo.team;
-          ddPlayer.position = playerInfo.position;
-        }
+        ddPlayer = new FantasyPlayer();
+        // For team defense, they don't set full name
+        ddPlayer.full_name = playerInfo.full_name ? playerInfo.full_name : `${playerInfo.first_name} ${playerInfo.last_name}`
+        ddPlayer.name_id = (playerInfo?.full_name + playerInfo?.position)
+          .replace("'", "").replace(".", "").replace(" ", "").toLowerCase();
+        ddPlayer.sf_trade_value = 0;
+        ddPlayer.trade_value = 0;
+        ddPlayer.team = playerInfo.team;
+        ddPlayer.position = playerInfo.position;
+        ddPlayer.mfl_id = platformPlayerId;
       }
       if (ddPlayer) {
         if (!this.positionGroupValueMap[ddPlayer.position]) {
@@ -173,6 +182,7 @@ export class PortfolioService {
             standard: league.isSuperflex ? 0 : 1,
             totalValue: league.isSuperflex ? ddPlayer.sf_trade_value : ddPlayer.trade_value,
             leagues: [league.leagueId],
+            cutLeagues: [],
           }
           this.playersWithValue.push(ddPlayer);
         }
@@ -195,7 +205,7 @@ export class PortfolioService {
       case LeaguePlatform.SLEEPER: {
         if (!this.playerPlatformIdMap[LeaguePlatform.SLEEPER]) {
           this.sleeperApiService.fetchAllSleeperPlayers().subscribe((players) => {
-            this.playerPlatformIdMap[LeaguePlatform.SLEEPER] = players
+            this.playerPlatformIdMap[LeaguePlatform.SLEEPER] = players;
             return of(players);
           });
         }
@@ -204,7 +214,7 @@ export class PortfolioService {
       case LeaguePlatform.MFL: {
         if (!this.playerPlatformIdMap[LeaguePlatform.MFL]) {
           this.mflApiService.getMFLPlayers(year, leagueId).subscribe((players) => {
-            this.playerPlatformIdMap[LeaguePlatform.MFL] = players
+            this.playerPlatformIdMap[LeaguePlatform.MFL] = players;
             return of(players);
           });
         }

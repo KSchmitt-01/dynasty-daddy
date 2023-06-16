@@ -55,7 +55,7 @@
             </div>
             <div>
               <button mat-raised-button [disabled]="!usernameInput"
-                      color="accent" (click)="fetchSleeperInfo()">Sign In
+                      color="accent" (click)="fetchSleeperInfo()" gaEvent="login_sleeper_username" gaCategory="platform_login">Sign In
               </button>
             </div>
             <div class="margin-top-25" *ngIf="leagueService.leagueUser && leagueService.leagueUser.leaguePlatform === 0">
@@ -84,7 +84,7 @@
             </mat-form-field>
             <div>
               <button mat-raised-button [disabled]="!sleeperLeagueIdInput || usernameInput === leagueService.selectedLeague?.leagueId"
-                      color="accent" (click)="loginWithSleeperLeagueId()">Sign In
+                      color="accent" (click)="loginWithSleeperLeagueId()"gaEvent="login_sleeper_league_id" gaCategory="platform_login">Sign In
               </button>
             </div>
           </div>
@@ -133,7 +133,7 @@
               </div>
               <div>
                 <button mat-raised-button [disabled]="!mflUsernameInput || !mflPasswordInput"
-                        color="accent" (click)="fetchMFLInfo()">Sign In
+                        color="accent" (click)="fetchMFLInfo()" gaEvent="login_mfl_username" gaCategory="platform_login">Sign In
                 </button>
                 <div class="margin-top-10 small-text__light">
                   We do not store any personal data, it is only passed to the MFL to retrieve data.
@@ -173,7 +173,7 @@
               </div>
               <div>
                 <button mat-raised-button [disabled]="!mflLeagueIdInput"
-                        color="accent" (click)="loginWithMFLLeagueId()">Sign In
+                        color="accent" (click)="loginWithMFLLeagueId()" gaEvent="login_mfl_league_id" gaCategory="platform_login">Sign In
                 </button>
               </div>
             </div>
@@ -181,7 +181,7 @@
         </mat-tab>
         <mat-tab *ngIf="configService.getConfigOptionByKey('allow_ff_login')?.configValue === 'true'">
           <ng-template mat-tab-label>
-            <img width="30px" height="30px" src="https://apprecs.org/ios/images/app-icons/256/3a/1259897658.jpg">
+            <img width="30px" height="30px" src="https://d1h60c43tcq0zx.cloudfront.net/static/images/icons/apple-touch-icon-f3d0ad2586e334ad16152ed2ea83733c.png">
           </ng-template>
           <div style="overflow: hidden !important;">
           <br>
@@ -215,7 +215,7 @@
             </div>
             <div>
               <button mat-raised-button [disabled]="!fleaflickerEmail"
-                      color="accent" (click)="fetchFleaflickerInfo()">Sign In
+                      color="accent" (click)="fetchFleaflickerInfo()" gaEvent="login_ff_email" gaCategory="platform_login">Sign In
               </button>
             </div>
             <div class="margin-top-25" *ngIf="leagueService.leagueUser && leagueService.leagueUser.leaguePlatform === 2">
@@ -252,7 +252,7 @@
             </div>
             <div>
               <button mat-raised-button [disabled]="!fleaflickerLeagueIdInput || usernameInput === leagueService.selectedLeague?.leagueId"
-                      color="accent" (click)="loginWithFleaflickerLeagueId()">Sign In
+                      color="accent" (click)="loginWithFleaflickerLeagueId()" gaEvent="login_ff_league_id" gaCategory="platform_login">Sign In
               </button>
             </div>
           </div>
@@ -288,7 +288,7 @@
             </div>
             <div>
               <button mat-raised-button [disabled]="!espnLeagueId || usernameInput === leagueService.selectedLeague?.leagueId"
-                      color="accent" (click)="loginWithESPNLeagueId()">Sign In
+                      color="accent" (click)="loginWithESPNLeagueId()" gaEvent="login_espn_league_id" gaCategory="platform_login">Sign In
               </button>
             </div>
           </div>
@@ -321,7 +321,22 @@
       <div class="center-text">
         <div class="mid-bold-text">Join Our Community</div>
         <br>
-        <iframe src="https://discord.com/widget?id=837372928005767220&theme=dark" width="350" height="500" allowtransparency="true" frameborder="0" sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
+        <div class="center-text">
+          <span  (click)="loadTwitterTimeline()"><img src="https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white" alt="Twitter" style="cursor: pointer"/></span>
+          <span style="margin-right: 5px; margin-left: 5px;" (click)="dynastyDaddySocials = 'discord'"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Community Badge" style="cursor: pointer"/></span>
+          <span (click)="dynastyDaddySocials = 'youtube'"><img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Subscribe" style="cursor: pointer"/></span>
+        </div>
+        <div *ngIf="dynastyDaddySocials == 'twitter'">
+          <div style="text-align: -webkit-center;">
+            <a class="twitter-timeline" href="https://twitter.com/DynastyDaddyff?ref_src=twsrc%5Etfw" width="350" height="400" data-tweet-limit="3">Loading Feed<mat-spinner [diameter]="20"></mat-spinner></a>
+          </div>
+        </div>
+        <div *ngIf="dynastyDaddySocials == 'discord'">
+          <iframe src="https://discord.com/widget?id=837372928005767220&theme=dark" width="350" height="400" allowtransparency="true" frameborder="0" sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
+        </div>
+        <div *ngIf="dynastyDaddySocials == 'youtube'">
+          <iframe width="350" height="197" src="https://www.youtube.com/embed/videoseries?list=PLj5YOlMjbtAIRSFnPi-D6HJxeX-HjtGw2" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
       </div>
     </div>
   </div>
@@ -422,13 +437,6 @@
       <div class="center-text mid-bold-text"><mat-icon class="home-icon" style="padding-right: 35px">redeem</mat-icon>Wrapped</div>
       <div class="center-text margin-top-25 margin-bot-50">
         Creates a Spotify Wrapped style recap for your fantasy league. Recapping the best fantasy trades, transactions, and teams in your league in a visually pleasing presentation that can easily be shared with league mates and others on social media.
-      </div>
-    </div>
-  </div>
-  <div class="margin-top-15 center-text">
-    <div>
-      <div style="text-align: -webkit-center;">
-        <a class="twitter-timeline" href="https://twitter.com/DynastyDaddyff?ref_src=twsrc%5Etfw" width="350" height="500">Recent Tweets</a>
       </div>
     </div>
   </div>
