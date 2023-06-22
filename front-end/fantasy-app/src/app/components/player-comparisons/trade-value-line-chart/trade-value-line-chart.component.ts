@@ -166,8 +166,23 @@ export class TradeValueLineChartComponent extends BaseComponent implements OnIni
   private calculateAllTime(): number {
     const oneDay = 24 * 60 * 60 * 1000;
     const firstDate = new Date();
-    const secondDate = new Date('2021-04-16T12:00:00');
+    const secondDate = this.getMarketStartDate();
 
     return Math.round(Math.abs((firstDate.getTime() - secondDate.getTime()) / (oneDay)));
+  }
+
+  /**
+   * get the market start day given the selected market
+   * @private
+   * return the start date of selectedMarket
+   */
+  private getMarketStartDate(): Date {
+    const marketStartDates: Map<FantasyMarket, string> = new Map([
+      [FantasyMarket.KeepTradeCut, "2021-04-16T12:00:00"],
+      [FantasyMarket.FantasyCalc, "2022-05-02T12:00:00"],
+      [FantasyMarket.DynastyProcess, "2023-02-17T12:00:00"],
+      [FantasyMarket.DynastySuperflex, "2023-06-03T12:00:00"]
+    ])
+    return new Date(marketStartDates.get(this.selectedMarket))
   }
 }
