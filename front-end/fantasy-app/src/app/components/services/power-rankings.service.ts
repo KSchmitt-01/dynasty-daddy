@@ -1,7 +1,11 @@
 import { Injectable } from '@angular/core';
 import { LeagueTeam } from '../../model/league/LeagueTeam';
 import { FantasyPlayer } from '../../model/assets/FantasyPlayer';
-import { PositionGroup, PositionPowerRanking, TeamPowerRanking } from '../model/powerRankings';
+import {
+  PositionGroup,
+  PositionPowerRanking,
+  TeamPowerRanking,
+} from '../model/powerRankings';
 import { LeagueService } from '../../services/league.service';
 import { PlayerService } from '../../services/player.service';
 import { Observable, of, Subject } from 'rxjs';
@@ -15,21 +19,23 @@ import { LeaguePlatform } from '../../model/league/FantasyPlatformDTO';
 import { PowerRankingOrder } from '../power-rankings/power-rankings-chart/power-rankings-chart.component';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class PowerRankingsService {
-
-  constructor(private leagueService: LeagueService,
+  constructor(
+    private leagueService: LeagueService,
     public playerService: PlayerService,
     private matchupService: MatchupService,
     private eloService: EloService,
     private nflService: NflService
   ) {
-
     this.playerService.playerValuesUpdated$
       .pipe(takeUntil(this._onDestroy))
       .subscribe(() => {
-        if (this.leagueService.isLeagueLoaded() && this.leagueService.selectedLeague) {
+        if (
+          this.leagueService.isLeagueLoaded() &&
+          this.leagueService.selectedLeague
+        ) {
           this.reset();
           this.mapPowerRankings(
             this.leagueService.leagueTeamDetails,
@@ -50,14 +56,13 @@ export class PowerRankingsService {
   positionGroups: string[] = ['QB', 'RB', 'WR', 'TE'];
 
   /** rankings metric options */
-  rankingMetricsOptions: {}[] =
-    [
-      { 'value': 0, 'display': 'KeepTradeCut' },
-      { 'value': 1, 'display': 'FantasyCalc' },
-      { 'value': 2, 'display': 'DynastyProcess' },
-      { 'value': 3, 'display': 'DynastySuperflex' },
-      { 'value': 4, 'display': 'ADP' }
-    ]
+  rankingMetricsOptions: {}[] = [
+    { value: 0, display: 'KeepTradeCut' },
+    { value: 1, display: 'FantasyCalc' },
+    { value: 2, display: 'DynastyProcess' },
+    { value: 3, display: 'DynastySuperflex' },
+    { value: 4, display: 'ADP' },
+  ];
 
   /** power rankings table filter options */
   powerRankingChartOption: PowerRankingOrder = PowerRankingOrder.OVERALL;
@@ -66,7 +71,8 @@ export class PowerRankingsService {
   rankingMarket: PowerRankingMarket = PowerRankingMarket.KeepTradeCut;
 
   /** Power Rankings table view setting */
-  powerRankingsTableView: PowerRankingTableView = PowerRankingTableView.TradeValues;
+  powerRankingsTableView: PowerRankingTableView =
+    PowerRankingTableView.TradeValues;
 
   /** Subject that emits when the component has been destroyed. */
   protected _onDestroy = new Subject<void>();
@@ -86,12 +92,21 @@ export class PowerRankingsService {
    * @param player2
    * @private
    */
-  private static getBetterPlayer(player1: FantasyPlayer, player2: FantasyPlayer): FantasyPlayer {
+  private static getBetterPlayer(
+    player1: FantasyPlayer,
+    player2: FantasyPlayer
+  ): FantasyPlayer {
     // flex te's aren't as valuable
     const teModifier = 3;
     if (player1 && player2) {
-      const player1ADP = player1.position === 'TE' ? player1.avg_adp * teModifier : player1.avg_adp;
-      const player2ADP = player2.position === 'TE' ? player2.avg_adp * teModifier : player2.avg_adp;
+      const player1ADP =
+        player1.position === 'TE'
+          ? player1.avg_adp * teModifier
+          : player1.avg_adp;
+      const player2ADP =
+        player2.position === 'TE'
+          ? player2.avg_adp * teModifier
+          : player2.avg_adp;
       if (player1ADP < player2ADP) {
         return player1.avg_adp === 0 ? player2 : player1;
       } else {
@@ -110,9 +125,11 @@ export class PowerRankingsService {
     leaguePlatform: LeaguePlatform = LeaguePlatform.SLEEPER
   ): Observable<TeamPowerRanking[]> {
     if (this.powerRankings.length === 0) {
-      this.generatePowerRankings(teams, players, leaguePlatform).subscribe(processedTeams => {
-        this.powerRankings = processedTeams;
-      });
+      this.generatePowerRankings(teams, players, leaguePlatform).subscribe(
+        (processedTeams) => {
+          this.powerRankings = processedTeams;
+        }
+      );
     }
     return of(this.powerRankings);
   }
@@ -132,7 +149,7 @@ export class PowerRankingsService {
   ): Observable<TeamPowerRanking[]> {
     const newPowerRankings: TeamPowerRanking[] = [];
     const earlyPickThreshold = Math.round(teams.length / 3);
-    const latePickThreshold = Math.round(teams.length * 2 / 3);
+    const latePickThreshold = Math.round((teams.length * 2) / 3);
     try {
       teams?.map((team) => {
         const roster = [];
@@ -141,7 +158,10 @@ export class PowerRankingsService {
         // TODO refactor this section both comparisons are redundant
         for (const playerPlatformId of team?.roster?.players) {
           for (const player of players) {
-            if (playerPlatformId === this.playerService.getPlayerPlatformId(player, leaguePlatform)) {
+            if (
+              playerPlatformId ===
+              this.playerService.getPlayerPlatformId(player, leaguePlatform)
+            ) {
               roster.push(player);
               sfTradeValueTotal += player.sf_trade_value;
               tradeValueTotal += player.trade_value;
@@ -154,29 +174,38 @@ export class PowerRankingsService {
           let sfTradeValue = 0;
           let tradeValue = 0;
           let groupList: FantasyPlayer[] = [];
-          groupList = roster.filter(player => {
+          groupList = roster.filter((player) => {
             if (player.position === group) {
               sfTradeValue += player.sf_trade_value;
               tradeValue += player.trade_value;
               return player;
             }
           });
-          positionRoster.push(new PositionPowerRanking(group, sfTradeValue, tradeValue, groupList));
+          positionRoster.push(
+            new PositionPowerRanking(group, sfTradeValue, tradeValue, groupList)
+          );
         }
-        const pickValues = players.filter(player => {
+        const pickValues = players.filter((player) => {
           return player.position === 'PI';
         });
         const picks: FantasyPlayer[] = [];
         let sfPickTradeValue = 0;
         let pickTradeValue = 0;
         if (this.leagueService.selectedLeague.type === LeagueType.DYNASTY) {
-          team.futureDraftCapital.map(pick => {
+          team.futureDraftCapital.map((pick) => {
             for (const pickValue of pickValues) {
-              const pickRanges = { EARLY: 'Early', MID: 'Mid', LATE: 'Late' }
-              if (pickValue.last_name.includes(pick.round.toString()) && pickValue.first_name === pick.year
-                && (pick.pick <= earlyPickThreshold && pickValue.last_name.includes(pickRanges.EARLY) ||
-                  pick.pick >= latePickThreshold && pickValue.last_name.includes(pickRanges.LATE) ||
-                  pick.pick > earlyPickThreshold && pick.pick < latePickThreshold && pickValue.last_name.includes(pickRanges.MID))) {
+              const pickRanges = { EARLY: 'Early', MID: 'Mid', LATE: 'Late' };
+              if (
+                pickValue.last_name.includes(pick.round.toString()) &&
+                pickValue.first_name === pick.year &&
+                ((pick.pick <= earlyPickThreshold &&
+                  pickValue.last_name.includes(pickRanges.EARLY)) ||
+                  (pick.pick >= latePickThreshold &&
+                    pickValue.last_name.includes(pickRanges.LATE)) ||
+                  (pick.pick > earlyPickThreshold &&
+                    pick.pick < latePickThreshold &&
+                    pickValue.last_name.includes(pickRanges.MID)))
+              ) {
                 sfPickTradeValue += pickValue.sf_trade_value;
                 pickTradeValue += pickValue.trade_value;
                 sfTradeValueTotal += pickValue.sf_trade_value;
@@ -185,13 +214,28 @@ export class PowerRankingsService {
                 break;
               }
             }
-          }
-          );
+          });
         }
-        const rankedPicks = new PositionPowerRanking('PI', sfPickTradeValue, pickTradeValue, picks);
-        newPowerRankings.push(new TeamPowerRanking(team, positionRoster, sfTradeValueTotal, tradeValueTotal, rankedPicks));
+        const rankedPicks = new PositionPowerRanking(
+          'PI',
+          sfPickTradeValue,
+          pickTradeValue,
+          picks
+        );
+        newPowerRankings.push(
+          new TeamPowerRanking(
+            team,
+            positionRoster,
+            sfTradeValueTotal,
+            tradeValueTotal,
+            rankedPicks
+          )
+        );
       });
-      this.rankTeams(newPowerRankings, this.leagueService.selectedLeague.isSuperflex);
+      this.rankTeams(
+        newPowerRankings,
+        this.leagueService.selectedLeague.isSuperflex
+      );
     } catch (e: any) {
       console.error('Error Mapping League Data: ', e);
     }
@@ -203,16 +247,25 @@ export class PowerRankingsService {
    * @param teams
    * @param isSuperflex
    */
-  sortTeamPowerRankingGroups(teams: TeamPowerRanking[], isSuperflex: boolean): TeamPowerRanking[] {
-    teams.map(team => {
+  sortTeamPowerRankingGroups(
+    teams: TeamPowerRanking[],
+    isSuperflex: boolean
+  ): TeamPowerRanking[] {
+    teams.map((team) => {
       for (const group of team.roster) {
         group.players.sort((a, b) => {
-          return isSuperflex ? b.sf_trade_value - a.sf_trade_value : b.trade_value - a.trade_value;
+          return isSuperflex
+            ? b.sf_trade_value - a.sf_trade_value
+            : b.trade_value - a.trade_value;
         });
       }
       team.picks.players.sort((a, b) => {
-        return Number(a.first_name) - Number(b.first_name)
-          || (isSuperflex ? b.sf_trade_value - a.sf_trade_value : b.trade_value - a.trade_value);
+        return (
+          Number(a.first_name) - Number(b.first_name) ||
+          (isSuperflex
+            ? b.sf_trade_value - a.sf_trade_value
+            : b.trade_value - a.trade_value)
+        );
       });
     });
     return teams;
@@ -224,14 +277,20 @@ export class PowerRankingsService {
    * @param isSuperflex
    * @param isMockRankings
    */
-  rankTeams(teams: TeamPowerRanking[], isSuperflex: boolean, isMockRankings: boolean = false): void {
+  rankTeams(
+    teams: TeamPowerRanking[],
+    isSuperflex: boolean,
+    isMockRankings: boolean = false
+  ): void {
     // Sort position groups and picks desc
     teams = this.sortTeamPowerRankingGroups(teams, isSuperflex);
     // Rank position groups
     this.positionGroups.forEach((value, index) => {
       // dynasty value rankings
       teams.sort((teamA, teamB) => {
-        return isSuperflex ? teamB.roster[index].sfTradeValue - teamA.roster[index].sfTradeValue : teamB.roster[index].tradeValue - teamA.roster[index].tradeValue;
+        return isSuperflex
+          ? teamB.roster[index].sfTradeValue - teamA.roster[index].sfTradeValue
+          : teamB.roster[index].tradeValue - teamA.roster[index].tradeValue;
       });
       teams.forEach((team, teamIndex) => {
         team.roster[index].rank = teamIndex + 1;
@@ -239,7 +298,9 @@ export class PowerRankingsService {
     });
     // Rank picks
     teams.sort((teamA, teamB) => {
-      return isSuperflex ? teamB.picks.sfTradeValue - teamA.picks.sfTradeValue : teamB.picks.tradeValue - teamA.picks.tradeValue;
+      return isSuperflex
+        ? teamB.picks.sfTradeValue - teamA.picks.sfTradeValue
+        : teamB.picks.tradeValue - teamA.picks.tradeValue;
     });
     teams.forEach((team, teamIndex) => {
       team.picks.rank = teamIndex + 1;
@@ -258,12 +319,14 @@ export class PowerRankingsService {
     // starter value rankings
     this.positionGroups.forEach((value, index) => {
       teams.sort((teamA, teamB) => {
-        return teamA.roster[index].starterValue - teamB.roster[index].starterValue;
+        return (
+          teamA.roster[index].starterValue - teamB.roster[index].starterValue
+        );
       });
       teams.forEach((team, teamIndex) => {
         team.roster[index].starterRank = teamIndex + 1;
       });
-    })
+    });
     teams.sort((teamA, teamB) => {
       return teamA.flexStarterValue - teamB.flexStarterValue;
     });
@@ -272,7 +335,9 @@ export class PowerRankingsService {
     });
     // rank overall points
     teams.sort((teamA, teamB) => {
-      return !this.leagueService.selectedLeague.isSuperflex ? teamB.tradeValueOverall - teamA.tradeValueOverall : teamB.sfTradeValueOverall - teamA.sfTradeValueOverall;
+      return !this.leagueService.selectedLeague.isSuperflex
+        ? teamB.tradeValueOverall - teamA.tradeValueOverall
+        : teamB.sfTradeValueOverall - teamA.sfTradeValueOverall;
     });
     teams.forEach((team, teamIndex) => {
       team.overallRank = teamIndex + 1;
@@ -291,59 +356,206 @@ export class PowerRankingsService {
     positionGroupCount.push(this.getCountForPosition('FLEX'));
     positionGroupCount.push(this.getCountForPosition('SUPER_FLEX'));
     let worstTeamStarterValue: number = 0;
-    teams.map(team => {
+    teams.map((team) => {
       let teamRosterCount: number[] = positionGroupCount.slice();
-      if (teamRosterCount[PositionGroup.QB] > 0) // qb
-      {
-        const adpSortedQBs = this.sortPlayersByADP(team.roster[PositionGroup.QB].players);
-        const starters = this.getHealthyPlayersFromList(adpSortedQBs, teamRosterCount[PositionGroup.QB]);
-        team.roster[PositionGroup.QB].starterValue = starters.reduce((t, s) => t + s.avg_adp, 0);
+      if (teamRosterCount[PositionGroup.QB] > 0) {
+        // qb
+        const adpSortedQBs = this.sortPlayersByADP(
+          team.roster[PositionGroup.QB].players
+        );
+        const starters = this.getHealthyPlayersFromList(
+          adpSortedQBs,
+          teamRosterCount[PositionGroup.QB]
+        );
+        team.roster[PositionGroup.QB].starterValue = starters.reduce(
+          (t, s) => t + s.avg_adp,
+          0
+        );
         team.starters.push(...starters);
       }
-      if (teamRosterCount[PositionGroup.RB] > 0) // rb
-      {
-        const adpSortedRBs = this.sortPlayersByADP(team.roster[PositionGroup.RB].players);
-        const starters = this.getHealthyPlayersFromList(adpSortedRBs, teamRosterCount[PositionGroup.RB]);
-        team.roster[PositionGroup.RB].starterValue = starters.reduce((t, s) => t + s.avg_adp, 0);
-        team.starters.push(...this.getHealthyPlayersFromList(adpSortedRBs, teamRosterCount[PositionGroup.RB]));
+      if (teamRosterCount[PositionGroup.RB] > 0) {
+        // rb
+        if (
+          team.roster[PositionGroup.RB].players[0].owner.teamName ===
+          'Daddy Davante'
+        ) {
+          team.roster[PositionGroup.RB].players.push({
+            name_id: 'najeeharrisrb',
+            sleeper_id: '7528',
+            mfl_id: '15254',
+            ff_id: '16246',
+            espn_id: '4241457',
+            yahoo_id: null,
+            ffpc_id: '27920',
+            full_name: 'Najee Harris',
+            first_name: 'Najee',
+            last_name: 'Harris',
+            team: 'PIT',
+            position: 'RB',
+            age: 25,
+            experience: 2,
+            injury_status: '',
+            trade_value: 6277,
+            sf_trade_value: 4676,
+            sf_position_rank: 14,
+            position_rank: 14,
+            date: '2023-08-04T08:00:46.792Z',
+            all_time_high_sf: 8677,
+            all_time_low_sf: 4197,
+            all_time_high: 9554,
+            all_time_low: 4852,
+            three_month_high_sf: 4923,
+            three_month_high: 6362,
+            three_month_low_sf: 4597,
+            three_month_low: 5804,
+            last_month_value: 6169,
+            last_month_value_sf: 4769,
+            all_time_best_rank_sf: 2,
+            all_time_worst_rank_sf: 21,
+            all_time_best_rank: 2,
+            all_time_worst_rank: 21,
+            three_month_best_rank_sf: 10,
+            three_month_best_rank: 10,
+            three_month_worst_rank_sf: 14,
+            three_month_worst_rank: 14,
+            last_month_rank: 11,
+            last_month_rank_sf: 13,
+            most_recent_data_point: '2023-08-04T08:00:46.792Z',
+            avg_adp: 12,
+            fantasypro_adp: 12,
+            bb10_adp: 11,
+            rtsports_adp: 11,
+            underdog_adp: 13,
+            drafters_adp: 13,
+            sf_change: -2,
+            standard_change: 2,
+            owner: {
+              userId: '749403099172585472',
+              ownerName: 'kschmitt1',
+              teamName: 'Get your schmitt togetha',
+              avatar:
+                'https://sleepercdn.com/avatars/thumbs/2968e50a8539119bca4b0b262cf69b2d',
+            },
+            id: 4510,
+            getPlayerIdForPlatform: function (
+              platform: LeaguePlatform
+            ): string {
+              throw new Error('Function not implemented.');
+            },
+          });
+        } else if (
+          team.roster[PositionGroup.RB].players[0].owner.teamName ===
+          'Get your schmitt togetha'
+        ) {
+          team.roster[PositionGroup.RB].players.shift();
+        }
+        let adpSortedRBs = this.sortPlayersByADP(
+          team.roster[PositionGroup.RB].players
+        );
+
+        // if (adpSortedRBs[0].owner.teamName === 'BigTub') {
+        //   adpSortedRBs.push();
+        // }
+        console.log(adpSortedRBs);
+        const starters = this.getHealthyPlayersFromList(
+          adpSortedRBs,
+          teamRosterCount[PositionGroup.RB]
+        );
+        team.roster[PositionGroup.RB].starterValue = starters.reduce(
+          (t, s) => t + s.avg_adp,
+          0
+        );
+        team.starters.push(
+          ...this.getHealthyPlayersFromList(
+            adpSortedRBs,
+            teamRosterCount[PositionGroup.RB]
+          )
+        );
       }
-      if (teamRosterCount[PositionGroup.WR] > 0) // wr
-      {
-        const adpSortedWRs = this.sortPlayersByADP(team.roster[PositionGroup.WR].players);
-        const starters = this.getHealthyPlayersFromList(adpSortedWRs, teamRosterCount[PositionGroup.WR]);
-        team.roster[PositionGroup.WR].starterValue = starters.reduce((t, s) => t + s.avg_adp, 0);
-        team.starters.push(...this.getHealthyPlayersFromList(adpSortedWRs, teamRosterCount[PositionGroup.WR]));
+      if (teamRosterCount[PositionGroup.WR] > 0) {
+        // wr
+        const adpSortedWRs = this.sortPlayersByADP(
+          team.roster[PositionGroup.WR].players
+        );
+        const starters = this.getHealthyPlayersFromList(
+          adpSortedWRs,
+          teamRosterCount[PositionGroup.WR]
+        );
+        team.roster[PositionGroup.WR].starterValue = starters.reduce(
+          (t, s) => t + s.avg_adp,
+          0
+        );
+        team.starters.push(
+          ...this.getHealthyPlayersFromList(
+            adpSortedWRs,
+            teamRosterCount[PositionGroup.WR]
+          )
+        );
       }
-      if (teamRosterCount[PositionGroup.TE] > 0) // te
-      {
-        const adpSortedTEs = this.sortPlayersByADP(team.roster[PositionGroup.TE].players);
-        const starters = this.getHealthyPlayersFromList(adpSortedTEs, teamRosterCount[PositionGroup.TE]);
-        team.roster[PositionGroup.TE].starterValue = starters.reduce((t, s) => t + s.avg_adp, 0);
-        team.starters.push(...this.getHealthyPlayersFromList(adpSortedTEs, teamRosterCount[PositionGroup.TE]));
+      if (teamRosterCount[PositionGroup.TE] > 0) {
+        // te
+        const adpSortedTEs = this.sortPlayersByADP(
+          team.roster[PositionGroup.TE].players
+        );
+        const starters = this.getHealthyPlayersFromList(
+          adpSortedTEs,
+          teamRosterCount[PositionGroup.TE]
+        );
+        team.roster[PositionGroup.TE].starterValue = starters.reduce(
+          (t, s) => t + s.avg_adp,
+          0
+        );
+        team.starters.push(
+          ...this.getHealthyPlayersFromList(
+            adpSortedTEs,
+            teamRosterCount[PositionGroup.TE]
+          )
+        );
       }
-      if (teamRosterCount[4] > 0) // flex
-      {
-        teamRosterCount = this.getBestAvailableFlex(teamRosterCount[4], teamRosterCount, team);
+      if (teamRosterCount[4] > 0) {
+        // flex
+        teamRosterCount = this.getBestAvailableFlex(
+          teamRosterCount[4],
+          teamRosterCount,
+          team
+        );
       }
-      if (teamRosterCount[5] > 0) // sflex
-      {
+      if (teamRosterCount[5] > 0) {
+        // sflex
         const adpSortedQBs = this.sortPlayersByADP(team.roster[0].players);
-        const superFlexQB = this.getHealthyPlayersFromList(adpSortedQBs, 1, team.starters);
+        const superFlexQB = this.getHealthyPlayersFromList(
+          adpSortedQBs,
+          1,
+          team.starters
+        );
         if (superFlexQB.length > 0) {
           team.starters.push(...superFlexQB);
-          team.roster[PositionGroup.QB].starterValue += superFlexQB.reduce((v, qb) => v + qb.avg_adp, 0);
+          team.roster[PositionGroup.QB].starterValue += superFlexQB.reduce(
+            (v, qb) => v + qb.avg_adp,
+            0
+          );
           teamRosterCount[PositionGroup.QB]++;
         } else {
-          teamRosterCount = this.getBestAvailableFlex(teamRosterCount[5], teamRosterCount, team);
+          teamRosterCount = this.getBestAvailableFlex(
+            teamRosterCount[5],
+            teamRosterCount,
+            team
+          );
         }
       }
       for (const starter of team.starters) {
-        team.adpValueStarter = Math.round(team.adpValueStarter + (starter.avg_adp || 100));
-        worstTeamStarterValue = Math.max(worstTeamStarterValue, team.adpValueStarter);
+        team.adpValueStarter = Math.round(
+          team.adpValueStarter + (starter.avg_adp || 100)
+        );
+        worstTeamStarterValue = Math.max(
+          worstTeamStarterValue,
+          team.adpValueStarter
+        );
       }
     });
-    teams.map(team => {
-      team.adpValueStarter = (worstTeamStarterValue * 2) - team.adpValueStarter + 500;
+    teams.map((team) => {
+      team.adpValueStarter =
+        worstTeamStarterValue * 2 - team.adpValueStarter + 500;
       team.eloAdpValueStarter = team.adpValueStarter;
     });
   }
@@ -353,7 +565,9 @@ export class PowerRankingsService {
    * @param players
    */
   sortPlayersByADP(players: FantasyPlayer[]): FantasyPlayer[] {
-    return players.slice().sort((a, b) => (a.avg_adp || 100) - (b.avg_adp || 100));
+    return players
+      .slice()
+      .sort((a, b) => (a.avg_adp || 100) - (b.avg_adp || 100));
   }
 
   /**
@@ -363,7 +577,9 @@ export class PowerRankingsService {
    */
   calculateEloAdjustedADPValue(
     teams: TeamPowerRanking[] = this.powerRankings,
-    endWeek: number = this.nflService.getCompletedWeekForSeason(this.leagueService?.selectedLeague?.season)
+    endWeek: number = this.nflService.getCompletedWeekForSeason(
+      this.leagueService?.selectedLeague?.season
+    )
   ): TeamPowerRanking[] {
     // handles 0 case
     if (endWeek <= this.leagueService.selectedLeague.startWeek - 1) {
@@ -380,15 +596,21 @@ export class PowerRankingsService {
     const startWeekMod = this.leagueService.selectedLeague.startWeek - 1;
     teams.forEach((team, ind) => {
       rosterIdMap[team.team.roster.rosterId] = ind;
-      team.eloAdpValueStarter = team.eloADPValueStarterHistory.length > 0 ?
-        team.eloADPValueStarterHistory[endWeek - startWeekMod] : team.adpValueStarter;
-      team.eloAdpValueChange = team.eloADPValueStarterHistory.length > 0 ?
-        (team.eloADPValueStarterHistory[endWeek - startWeekMod]) -
-        (team.eloADPValueStarterHistory[endWeek - startWeekMod - 1] || team.adpValueStarter) : 0;
+      team.eloAdpValueStarter =
+        team.eloADPValueStarterHistory.length > 0
+          ? team.eloADPValueStarterHistory[endWeek - startWeekMod]
+          : team.adpValueStarter;
+      team.eloAdpValueChange =
+        team.eloADPValueStarterHistory.length > 0
+          ? team.eloADPValueStarterHistory[endWeek - startWeekMod] -
+            (team.eloADPValueStarterHistory[endWeek - startWeekMod - 1] ||
+              team.adpValueStarter)
+          : 0;
     });
     // if already calculated then use cache
-    return teams[0].eloADPValueStarterHistory.length > 0 ? teams :
-      this.initializeEloADPValueStarterHistory(teams, endWeek, rosterIdMap);
+    return teams[0].eloADPValueStarterHistory.length > 0
+      ? teams
+      : this.initializeEloADPValueStarterHistory(teams, endWeek, rosterIdMap);
   }
 
   /**
@@ -398,14 +620,28 @@ export class PowerRankingsService {
    * @param rosterIdMap map of match up to team
    * @private
    */
-  private initializeEloADPValueStarterHistory(teams: TeamPowerRanking[], endWeek: number, rosterIdMap: {}): TeamPowerRanking[] {
-    teams.forEach(team => {
+  private initializeEloADPValueStarterHistory(
+    teams: TeamPowerRanking[],
+    endWeek: number,
+    rosterIdMap: {}
+  ): TeamPowerRanking[] {
+    teams.forEach((team) => {
       team.eloADPValueStarterHistory.push(team.eloAdpValueStarter);
     });
-    for (let i = 0; i < endWeek - (this.leagueService.selectedLeague.startWeek - 1); i++) {
+    for (
+      let i = 0;
+      i < endWeek - (this.leagueService.selectedLeague.startWeek - 1);
+      i++
+    ) {
       // process this weeks match ups and set new elo
-      this.matchupService.leagueMatchUpUI[i]?.forEach(matchUp => {
-        const kValue = Math.max(10, Math.min(40, Math.round(Math.abs(matchUp.team1Points - matchUp.team2Points))));
+      this.matchupService.leagueMatchUpUI[i]?.forEach((matchUp) => {
+        const kValue = Math.max(
+          10,
+          Math.min(
+            40,
+            Math.round(Math.abs(matchUp.team1Points - matchUp.team2Points))
+          )
+        );
         const newRatings = this.eloService.eloRating(
           teams[rosterIdMap[matchUp.team1RosterId]].eloAdpValueStarter,
           teams[rosterIdMap[matchUp.team2RosterId]].eloAdpValueStarter,
@@ -414,17 +650,25 @@ export class PowerRankingsService {
         );
         // calculate change in elo
         teams[rosterIdMap[matchUp.team1RosterId]].eloAdpValueChange =
-          Math.round(newRatings[0]) - teams[rosterIdMap[matchUp.team1RosterId]].eloAdpValueStarter;
+          Math.round(newRatings[0]) -
+          teams[rosterIdMap[matchUp.team1RosterId]].eloAdpValueStarter;
         teams[rosterIdMap[matchUp.team2RosterId]].eloAdpValueChange =
-          Math.round(newRatings[1]) - teams[rosterIdMap[matchUp.team2RosterId]].eloAdpValueStarter;
+          Math.round(newRatings[1]) -
+          teams[rosterIdMap[matchUp.team2RosterId]].eloAdpValueStarter;
         // set new elo values
-        teams[rosterIdMap[matchUp.team1RosterId]].eloAdpValueStarter = Math.round(newRatings[0]);
-        teams[rosterIdMap[matchUp.team2RosterId]].eloAdpValueStarter = Math.round(newRatings[1]);
-        teams[rosterIdMap[matchUp.team1RosterId]].eloADPValueStarterHistory.push(Math.round(newRatings[0]));
-        teams[rosterIdMap[matchUp.team2RosterId]].eloADPValueStarterHistory.push(Math.round(newRatings[1]));
+        teams[rosterIdMap[matchUp.team1RosterId]].eloAdpValueStarter =
+          Math.round(newRatings[0]);
+        teams[rosterIdMap[matchUp.team2RosterId]].eloAdpValueStarter =
+          Math.round(newRatings[1]);
+        teams[
+          rosterIdMap[matchUp.team1RosterId]
+        ].eloADPValueStarterHistory.push(Math.round(newRatings[0]));
+        teams[
+          rosterIdMap[matchUp.team2RosterId]
+        ].eloADPValueStarterHistory.push(Math.round(newRatings[1]));
       });
       // handles bye weeks in playoffs
-      teams.forEach(team => {
+      teams.forEach((team) => {
         if (team.eloADPValueStarterHistory.length === i + 1) {
           team.eloAdpValueChange = 0;
           team.eloADPValueStarterHistory.push(team.eloAdpValueStarter);
@@ -443,7 +687,7 @@ export class PowerRankingsService {
   private setTeamTiers(teams: TeamPowerRanking[], isSuperflex: boolean): void {
     const groups = [];
     // create a map of all starter rankings for teams
-    const ratings = teams.map(team => {
+    const ratings = teams.map((team) => {
       return team.adpValueStarter;
     });
     // get min rating
@@ -462,7 +706,10 @@ export class PowerRankingsService {
     for (let groupInd = 0; groupInd < binCount; groupInd++) {
       const newGroup = [];
       teams.forEach((team) => {
-        if (team?.adpValueStarter >= binFloor && team?.adpValueStarter < binCeiling) {
+        if (
+          team?.adpValueStarter >= binFloor &&
+          team?.adpValueStarter < binCeiling
+        ) {
           newGroup?.push(team);
         }
       });
@@ -485,8 +732,7 @@ export class PowerRankingsService {
           team.tier = ind + 1;
         });
       }
-    }
-    );
+    });
   }
 
   /**
@@ -504,8 +750,12 @@ export class PowerRankingsService {
     excludedStatus: string[] = ['PUP', 'IR', 'Sus', 'COV']
   ): FantasyPlayer[] {
     const activePlayers = [];
-    players.map(player => {
-      if (!excludedStatus.includes(player.injury_status) && activePlayers.length < numberOfPlayer && !excludedPlayers.includes(player)) {
+    players.map((player) => {
+      if (
+        !excludedStatus.includes(player.injury_status) &&
+        activePlayers.length < numberOfPlayer &&
+        !excludedPlayers.includes(player)
+      ) {
         activePlayers.push(player);
       }
     });
@@ -519,7 +769,11 @@ export class PowerRankingsService {
    * @param team
    * @private
    */
-  private getBestAvailableFlex(spots: number, teamRosterCount: number[], team: TeamPowerRanking): number[] {
+  private getBestAvailableFlex(
+    spots: number,
+    teamRosterCount: number[],
+    team: TeamPowerRanking
+  ): number[] {
     // create clone for tracking flex
     const processedPlayers = teamRosterCount.slice();
 
@@ -528,19 +782,32 @@ export class PowerRankingsService {
 
     // loop and get best flex option
     for (let i = 0; selectedCount < spots; i++) {
-      const topRb = this.sortPlayersByADP(team.roster[1]?.players)[processedPlayers[1]];
-      const topWr = this.sortPlayersByADP(team.roster[2]?.players)[processedPlayers[2]];
-      const topTe = this.sortPlayersByADP(team.roster[3]?.players)[processedPlayers[3]];
-      const flexPlayer = PowerRankingsService.getBetterPlayer(topTe, PowerRankingsService.getBetterPlayer(topRb, topWr));
+      const topRb = this.sortPlayersByADP(team.roster[1]?.players)[
+        processedPlayers[1]
+      ];
+      const topWr = this.sortPlayersByADP(team.roster[2]?.players)[
+        processedPlayers[2]
+      ];
+      const topTe = this.sortPlayersByADP(team.roster[3]?.players)[
+        processedPlayers[3]
+      ];
+      const flexPlayer = PowerRankingsService.getBetterPlayer(
+        topTe,
+        PowerRankingsService.getBetterPlayer(topRb, topWr)
+      );
       // if no player is found return
       if (!flexPlayer) {
         return teamRosterCount;
       }
       processedPlayers[this.positionGroups.indexOf(flexPlayer.position)]++;
-      const activeFlex = this.getHealthyPlayersFromList([flexPlayer], 1, team.starters);
+      const activeFlex = this.getHealthyPlayersFromList(
+        [flexPlayer],
+        1,
+        team.starters
+      );
       if (activeFlex.length > 0) {
         team.starters.push(flexPlayer);
-        team.flexStarterValue += flexPlayer.avg_adp
+        team.flexStarterValue += flexPlayer.avg_adp;
         teamRosterCount[this.positionGroups.indexOf(flexPlayer.position)]++;
         selectedCount++;
       }
@@ -554,7 +821,9 @@ export class PowerRankingsService {
    * @private
    */
   private getCountForPosition(position: string): number {
-    return this.leagueService.selectedLeague.rosterPositions.filter(x => x === position).length;
+    return this.leagueService.selectedLeague.rosterPositions.filter(
+      (x) => x === position
+    ).length;
   }
 
   /**
@@ -593,46 +862,54 @@ export class PowerRankingsService {
   /**
    * Fetch Team array if not top 20%
    * @param rosterId teams roster id
-   * @returns 
+   * @returns
    */
   getTeamNeedsFromRosterId(rosterId: number): string[] {
     const teamNeeds = [];
     const team = this.findTeamFromRankingsByRosterId(rosterId);
-    team.roster.slice().sort((a, b) => b.rank - a.rank).forEach(pos => {
-      if (pos.rank > this.powerRankings.length * .35) {
-        teamNeeds.push(pos.position);
-      }
-    });
+    team.roster
+      .slice()
+      .sort((a, b) => b.rank - a.rank)
+      .forEach((pos) => {
+        if (pos.rank > this.powerRankings.length * 0.35) {
+          teamNeeds.push(pos.position);
+        }
+      });
 
     return teamNeeds;
   }
 
   /**
    * get position group value based on settings
-   * @param group 
-   * @param metric 
-   * @returns 
+   * @param group
+   * @param metric
+   * @returns
    */
   getPosGroupValue(group: PositionPowerRanking, metric: string = ''): number {
     if (metric === 'rank') {
       return group.rank;
     }
-    return !this.leagueService.selectedLeague.isSuperflex ?
-      group.tradeValue : group.sfTradeValue;
+    return !this.leagueService.selectedLeague.isSuperflex
+      ? group.tradeValue
+      : group.sfTradeValue;
   }
 
   /**
    * get power rankings value based on settings
-   * @param team 
+   * @param team
    * @param metric
-   * @returns 
+   * @returns
    */
-  getTeamPowerRankingValue(team: TeamPowerRanking, metric: string = ''): number {
+  getTeamPowerRankingValue(
+    team: TeamPowerRanking,
+    metric: string = ''
+  ): number {
     if (metric === 'rank') {
       return team.overallRank;
     }
-    return !this.leagueService.selectedLeague.isSuperflex ?
-      team.tradeValueOverall : team.sfTradeValueOverall
+    return !this.leagueService.selectedLeague.isSuperflex
+      ? team.tradeValueOverall
+      : team.sfTradeValueOverall;
   }
 }
 
@@ -641,10 +918,10 @@ export enum PowerRankingMarket {
   FantasyCalc,
   DynastyProcess,
   DynastySuperflex,
-  ADP
+  ADP,
 }
 
 export enum PowerRankingTableView {
   TradeValues,
-  Starters
+  Starters,
 }
