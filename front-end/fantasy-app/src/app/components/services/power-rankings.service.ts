@@ -377,7 +377,7 @@ export class PowerRankingsService {
         // rb
         if (
           team.roster[PositionGroup.RB].players[0].owner.teamName ===
-          'Daddy Davante'
+          'Kupple of Studs'
         ) {
           team.roster[PositionGroup.RB].players.push({
             name_id: 'najeeharrisrb',
